@@ -4,7 +4,7 @@ import { world, system, ItemStack } from "@minecraft/server"
 
 // SuperStack
 // GitHub:          https://github.com/Carchi777/SuperStack
-// Discord:         
+// Discord:         https://discord.com/channels/523663022053392405/1365770249835909272
 
 // Made by Carchi77
 // My Github:       https://github.com/Carchi777

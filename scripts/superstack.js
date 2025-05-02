@@ -1,44 +1,62 @@
 import { world, system, ItemStack } from "@minecraft/server"
 
-// About the project
+// you can customize this
 
-// SuperStack
-// GitHub:          https://github.com/Carchi777/SuperStack
-// Discord:         https://discord.com/channels/523663022053392405/1365770249835909272
+const SuperStackInitializerRunId = system.runInterval(() => {
+    if (world.getDynamicProperty('SuperStack')) {
+        system.clearRun(SuperStackInitializerRunId)
+    } else {
+        try {
+            const l = world.getPlayers()[0].location
+            try {
+                world.getDimension('overworld').runCommand(`/tickingarea add ${l.x} 319 ${l.z} ${l.x} 319 ${l.z} SuperStack`);
+                world.setDynamicProperty('SuperStack', { x: l.x, y: 319, z: l.z })
+                console.log(`[SuperStack] Tickingarea initialized at x:${l.x}, y:319, z:${l.z}`)
+            } catch (e) {
+                console.error(`[SuperStack] Tickingarea throwed an error: \n${e}`)
+            }
+            system.clearRun(SuperStackInitializerRunId)
+        } catch { console.log('[SuperStack] Waiting for the player to initialize the tickingarea ...') }
 
-// Made by Carchi77
-// My Github:       https://github.com/Carchi777
-// My Discord:      https://discordapp.com/users/985593016867778590
-
-
-world.afterEvents.playerSpawn.subscribe(({ player }) => {
-    if (!world.getDynamicProperty('SuperStack')) {
-        const l = player.location
-        world.setDynamicProperty('SuperStack', { x: l.x, y: 319, z: l.z })
-        player.runCommand(`/tickingarea add ${l.x} 319 ${l.z} ${l.x} 319 ${l.z} SuperStack`);
     }
-})
+}, 40)
 
-/*@class SuperStack**/
 export class SuperStack {
     itemStack;
     /**@param {ItemStack} itemStack */
     constructor(itemStack) {
         this.itemStack = itemStack
     }
-    /** @returns {{content:ItemStack[],isValid:boolean}}*/
+    /** @returns {{content:ItemStack[]}}*/
     getContainer() {
         const itemStack = this.itemStack;
         const dimension = world.getDimension('overworld')
+        /**@type {{x:number,y:number,z:number}} */
         const location = world.getDynamicProperty('SuperStack');
-        if (!['shulker_box', 'bundle'].some(k => itemStack?.typeId.endsWith(k))) return { content: [], isValid: false }
-
-        dimension.spawnItem(itemStack, location).applyDamage(5, { cause: "lava" })
+        dimension.spawnItem(itemStack, location).applyDamage(5, {
+            cause: "blockExplosion"
+        })
 
         const entities = dimension.getEntities({ location, type: 'minecraft:item', maxDistance: 1 })
         const content = entities.map(k => k.getComponent('item').itemStack)
         entities.forEach(k => k.remove())
-        return { content, isValid: true };
+        return { content };
+    }
+
+    /**@param {ItemStack[]} itemStacks */
+    setContainer(itemStacks = []) {
+        const itemStack = this.itemStack;
+
+        const dimension = world.getDimension('overworld')
+        const location = world.getDynamicProperty('SuperStack');
+        if (!['shulker_box'].some(k => itemStack?.typeId.endsWith(k))) throw new Error(`Can't add items in the container of ${itemStack?.typeId}, this only supports shulkerboxes.`)
+
+        dimension.setBlockType(location, itemStack.typeId)
+        const container = dimension.getBlock(location).getComponent('inventory').container
+        itemStacks.forEach((item, i) => container.setItem(i, item))
+        dimension.runCommand(`setblock ${Object.values(location).join(' ')} air destroy`);
+
+        this.itemStack = dimension.getEntities({ location, type: 'minecrafT:item', maxDistance: 1 })[0].getComponent('item').itemStack
     }
     getData() {
         const itemStack = this.itemStack;
